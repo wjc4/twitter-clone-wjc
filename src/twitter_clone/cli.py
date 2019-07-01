@@ -1,2 +1,2 @@
-def main():
+def hello():
     print("wew")
