@@ -1,8 +1,10 @@
-from .views import app
+from .routes import app
+import logging
 
 
 def main():
-    app.run()
+    app.logger.setLevel(logging.DEBUG)
+    app.run(debug=True)
 
 
 if __name__ == "__main__":
