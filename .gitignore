@@ -5,3 +5,4 @@ __pycache__
 .envrc
 *.egg-info
 .vscode
+.idea

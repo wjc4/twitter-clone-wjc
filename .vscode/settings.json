@@ -1,5 +1,0 @@
-{
-    "python.pythonPath": "env/bin/python3",
-    "python.formatting.provider": "black",
-    "editor.formatOnSave": true
-}
