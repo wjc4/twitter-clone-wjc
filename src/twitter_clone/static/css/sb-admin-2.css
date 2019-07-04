@@ -3314,6 +3314,10 @@ input[type="button"].btn-block {
   left: auto;
 }
 
+.dropdown-menu-tweet {
+  min-width: 30rem;
+}
+
 @media (min-width: 576px) {
   .dropdown-menu-sm-left {
     right: auto;

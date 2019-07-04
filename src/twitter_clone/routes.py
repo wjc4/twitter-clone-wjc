@@ -3,6 +3,8 @@ from flask import Flask, session, redirect, url_for, render_template, request
 
 from . import google_auth
 
+from . import upload
+
 app = Flask(__name__)
 app.secret_key = os.getenv("SESSION_SECRET", os.urandom(50))
 
@@ -122,7 +124,7 @@ def signup_google():
 
 
 def create_user_session(user_id):
-    session_id = str(uuid.uuid4())
+    session_id = uuid.uuid4().hex
     session["session_id"] = session_id
     session["user_id"] = user_id  # DELETE AFTER DEPRECATION
     session.permanent = True
@@ -139,6 +141,8 @@ def is_logged_in():
 
 
 def check_google_session():
+    if "google_id" not in session:
+        raise Exception("No google SSO found!")
     google_id = session["google_id"]
     if not db.existing_google_id(google_id):
         return redirect(url_for("signup_google"))
@@ -162,7 +166,8 @@ def profile():
     username = db.get_username(user_id)
 
     timeline = db.get_user_timeline(username)
-    return render_template("profile.html", timeline=timeline)
+    return render_template("timeline.html", timeline=timeline, username=username)
+    # return render_template("profile.html", timeline=timeline)
 
 
 @app.route("/post", methods=["POST"])
@@ -194,3 +199,37 @@ def google_debug():
         )
 
     return "You are not currently logged in."
+
+
+@app.route("/upload", methods=["POST"])
+def upload_file():
+    app.logger.debug(dict(request.files))
+    # A
+    if "user_file" not in request.files:
+        return "No user_file key in request.files"
+
+    # B
+    file = request.files["user_file"]
+
+    """
+        These attributes are also available
+
+        file.filename               # The actual name of the file
+        file.content_type
+        file.content_length
+        file.mimetype
+
+    """
+
+    # C.
+    if file.filename == "":
+        return "Please select a file"
+
+    # D.
+    if file and upload.allowed_file(file.filename):
+        output = upload.upload_file_to_s3(file)
+        # return str(output)
+        return upload.create_presigned_url(output)
+
+    else:
+        return redirect("/")
