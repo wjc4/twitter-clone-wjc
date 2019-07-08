@@ -12,14 +12,14 @@
   <title>Twitterclone - {{ username }}</title>
 
   <!-- Custom fonts for this template-->
-  <link href="static/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+  <link href="../static/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
   <link
     href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i"
     rel="stylesheet">
 
   <!-- Custom styles for this template-->
-  <link href="static/css/sb-admin-2.min.css" rel="stylesheet">
-  <link href="static/css/twitter-clone.css" rel="stylesheet">
+  <link href="../static/css/sb-admin-2.min.css" rel="stylesheet">
+  <link href="../static/css/twitter-clone.css" rel="stylesheet">
 
 </head>
 
@@ -44,7 +44,7 @@
 
       <!-- Nav Item - Dashboard -->
       <li id="home" class="nav-item">
-        <a class="nav-link" href="home">
+        <a class="nav-link" href="../home">
           <i class="fas fa-fw fa-home"></i>
           <span>Home</span></a>
 
@@ -52,41 +52,23 @@
 
       <!-- Nav Item - Dashboard -->
       <li id="global" class="nav-item">
-        <a class="nav-link" href="global">
+        <a class="nav-link" href="../global">
           <i class="fas fa-fw fa-globe-asia"></i>
           <span>Global</span></a>
       </li>
 
       <!-- Nav Item - Dashboard -->
       <li id="profile" class="nav-item">
-        <a class="nav-link" href="profile">
+        <a class="nav-link" href="../profile">
           <i class="fas fa-fw fa-smile-beam"></i>
           <span>Profile</span></a>
       </li>
 
-      <script>
-
-        function setActiveSideBar() {
-          var dict = {
-            "/profile": "profile",
-            "/home": "home",
-            "/global": "global"
-          };
-          var pathname = window.location.pathname
-          if (pathname in dict) {
-            document.getElementById(dict[pathname]).classList.add('active');
-          }
-
-
-        }
-        setActiveSideBar()
-
-      </script>
       <!-- Divider -->
       <hr class="sidebar-divider d-none d-md-block">
       <!-- Nav Item - Dashboard -->
       <li id="users" class="nav-item">
-        <a class="nav-link" href="users">
+        <a class="nav-link" href="../users">
           <i class="fas fa-fw fa-user-friends"></i>
           <span>Users</span></a>
       </li>
@@ -311,78 +293,32 @@
             <h1 class="h3 mb-0 text-gray-800"> {{ page_title }} </h1>
 
 
-            <div class="dropdown no-arrow">
-              <a class="dropdown-toggle d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" href="#"
-                role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                <i class="fas fa-comment-alt fa-sm text-white-50"></i>&nbsp Say Something
-              </a>
-              <div class="dropdown-menu dropdown-menu-right dropdown-menu-tweet shadow animated--fade-in mw-30rem">
-                <form id="tweet_form" class="mx-md-3 my-2 my-md-0 mw-100" action="{{ url_for('post') }}" method="post"
-                  enctype="multipart/form-data">
-                  <div class="input-group">
-                    <script>
-                      function pressed(e) {
-                        // Has the enter key been pressed?
-                        if ((window.event ? event.keyCode : e.which) == 13) {
-                          // If it has been so, manually submit the <form>
-                          document.getElementById('tweet_form').submit();
-                        }
-                      }
-                    </script>
-                    <textarea onkeydown="pressed(event)" form="tweet_form" name="tweet"
-                      class="input mt-2 form-control bg-light border-0" rows="3" placeholder="Tweet..."></textarea>
+            {% if logged_in and not following %}
 
-                  </div>
+            <!-- start of following button -->
+            <form action="{{ url_for('follow') }}" method="post">
+              <input type="hidden" name="following_username" id="following_username" value="{{ username }}">
+              <button type="submit" class="btn btn-sm btn-primary shadow-sm" href="#">
+                <i class="fas fa-plus fa-sm text-white-50"></i>&nbsp Follow
 
-                  <div class="input-group mt-2">
+              </button>
+            </form>
+            <!-- end of following button -->
+            {% endif %}
+            {% if following %}
 
-                    <div id="outerImage" class="outer" style="display: none;">
-                      <img id="uploadPreview" style="width: 100px; height: 100px; " />
-                      <div class="overlay" onclick="RemoveImage();">
-                        <p class="text"><i class="far fa-trash-alt"></i></p>
-                      </div>
-                    </div>
-                    <label id="uploadImageButton" for="uploadImage"
-                      class="mt-2 d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i
-                        class="fas fa-image fa-sm text-white-50"></i>&nbsp Attach Image</label>
+            <!-- start of following button -->
+            <form action="{{ url_for('unfollow') }}" method="post">
+              <input type="hidden" name="following_username" id="following_username" value="{{ username }}">
+              <button type="submit" class="btn btn-sm btn-primary shadow-sm follow-button">
+                <i class="fas fa-minus fa-sm text-white-50 following-icon" style="display: none"></i><a
+                  class="unfollow-text">Following</a>
 
-                    <input id="uploadImage" type="file" name="pic" accept="image/png, image/jpeg, image/gif"
-                      onchange="PreviewImage();" style="display: none" />
-                    <script type="text/javascript">
+              </button>
 
-                      function PreviewImage() {
-                        var oFReader = new FileReader();
-                        oFReader.readAsDataURL(document.getElementById("uploadImage").files[0]);
-
-                        oFReader.onload = function (oFREvent) {
-                          document.getElementById("uploadPreview").src = oFREvent.target.result;
-
-                          document.getElementById("outerImage").style.display = "flex";
-                          document.getElementById("uploadImageButton").style.visibility = "hidden";
-                        };
-                      };
-
-                      function RemoveImage() {
-                        document.getElementById("uploadPreview").removeAttribute('src');
-                        document.getElementById("uploadImage").value = "";
-                        document.getElementById("outerImage").style.display = "none";
-                        document.getElementById("uploadImageButton").style.visibility = "visible";
-                      }
-
-                    </script>
-                  </div>
-
-                  <button type="submit" class="mt-2 d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" href="#">
-                    <i class="fas fa-feather-alt fa-sm text-white-50"></i>&nbsp Post!
-
-                  </button>
-                </form>
-                <a class="dropdown-item">
-
-                </a>
-
-              </div>
-            </div>
+            </form>
+            <!-- end of following button -->
+            {% endif %}
 
 
           </div>
@@ -397,9 +333,7 @@
                 <!-- Card Header - Dropdown -->
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                   <div class="d-flex flex-row">
-                    <a href="/user/{{ post.username }}">
-                      <h6 class="m-0 font-weight-bold text-primary">{{ post.display_name }}</h6>
-                    </a>
+                    <h6 class="m-0 font-weight-bold text-primary">{{ post.display_name }}</h6>
                     <h6 class="px-1 m-0">@{{ post.username }}</h6>
                     <h6 class="px-1 m-0 epoch">{{ post.time_stamp }}</h6>
 
@@ -496,21 +430,38 @@
       </div>
 
       <!-- Bootstrap core JavaScript-->
-      <script src="static/vendor/jquery/jquery.min.js"></script>
-      <script src="static/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+      <script src="../static/vendor/jquery/jquery.min.js"></script>
+      <script src="../static/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 
       <!-- Core plugin JavaScript-->
-      <script src="static/vendor/jquery-easing/jquery.easing.min.js"></script>
+      <script src="../static/vendor/jquery-easing/jquery.easing.min.js"></script>
 
       <!-- Custom scripts for all pages-->
-      <script src="static/js/sb-admin-2.min.js"></script>
+      <script src="../static/js/sb-admin-2.min.js"></script>
 
       <!-- Page level plugins -->
-      <script src="static/vendor/chart.js/Chart.min.js"></script>
+      <script src="../static/vendor/chart.js/Chart.min.js"></script>
 
       <!-- Page level custom scripts -->
-      <script src="static/js/demo/chart-area-demo.js"></script>
-      <script src="static/js/demo/chart-pie-demo.js"></script>
+      <script src="../static/js/demo/chart-area-demo.js"></script>
+      <script src="../static/js/demo/chart-pie-demo.js"></script>
+
+      <script>
+        $(document).ready(function () {
+          $('.follow-button').hover(function () {
+            $(this).removeClass('btn-primary');
+            $(this).addClass('btn-danger');
+            $(this).children(".following-icon").css("display", "inline-block");
+            $(this).children(".unfollow-text").html('&nbsp Unfollow');
+          }, function () {
+            $(this).removeClass('btn-danger');
+            $(this).addClass('btn-primary');
+            $(this).children('p.filled-text')
+            $(this).children(".following-icon").css("display", "none");
+            $(this).children(".unfollow-text").html('Following');
+          });
+        });
+      </script>
 
 </body>
 

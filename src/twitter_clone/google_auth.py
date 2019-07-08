@@ -73,6 +73,7 @@ def no_cache(view):
 @app.route("/google/login")
 @no_cache
 def google_login():
+    flush_session()
     session = OAuth2Session(
         CLIENT_ID,
         CLIENT_SECRET,
@@ -86,6 +87,10 @@ def google_login():
     flask.session.permanent = True
 
     return flask.redirect(uri, code=302)
+
+
+def flush_session():
+    [flask.session.pop(key) for key in list(flask.session.keys()) if key != "_flashes"]
 
 
 @app.route("/google/auth")

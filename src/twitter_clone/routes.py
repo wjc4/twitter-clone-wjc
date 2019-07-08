@@ -1,5 +1,13 @@
 import logging, sys, os, uuid, json
-from flask import Flask, session, redirect, url_for, render_template, request
+from flask import (
+    Flask,
+    session,
+    redirect,
+    url_for,
+    render_template,
+    request,
+    send_from_directory,
+)
 
 from . import google_auth
 
@@ -25,7 +33,10 @@ def hello_world():
 
 @app.route("/", methods=["GET"])
 def home():
-    return app.send_static_file("index.html")
+    if is_logged_in():
+        return redirect(url_for("home_timeline"))
+    return redirect(url_for("global_timeline"))
+    # return app.send_static_file("index.html")
     # return render_template("login.html")
 
 
@@ -53,13 +64,14 @@ def redirection():
 
 @app.route("/login", methods=["POST"])
 def create_user():
+    flush_session()
     username = request.form["username"]
     password = request.form["password"]
     try:
         create_user_session(db.validate_user(username, password))
-    except:
+    except Exception as e:
         # @TODO failed login
-        return "failed login"
+        return str(e)
     return redirect(url_for("home"))
 
 
@@ -116,7 +128,7 @@ def signup_google():
     password = request.form["username"]
     display_name = request.form["display_name"]
     # @TODO catch errors
-    user_id = db.create_user(username, password, display_name)
+    user_id = db.create_user(username, password, display_name, True)
     db.create_google_user(session["google_id"], user_id, username)
     create_user_session(user_id)
 
@@ -166,8 +178,55 @@ def profile():
     username = db.get_username(user_id)
 
     timeline = db.get_user_timeline(username)
-    return render_template("timeline.html", timeline=timeline, username=username)
+
+    timeline = update_timeline(timeline)
+    app.logger.debug(timeline)
+    return render_template("timeline.html", timeline=timeline, page_title="Your Tweets")
     # return render_template("profile.html", timeline=timeline)
+
+
+@app.route("/global", methods=["GET"])
+def global_timeline():
+    # if not is_logged_in():
+    #     app.logger.debug("not logged in")
+    #     return redirect(url_for("login"))
+
+    # user_id = db.get_session(session["session_id"])
+    # username = db.get_username(user_id)
+
+    timeline = db.get_global_timeline()
+
+    timeline = update_timeline(timeline)
+    app.logger.debug(timeline)
+    return render_template(
+        "timeline.html", timeline=timeline, page_title="Global Tweets"
+    )
+
+
+@app.route("/home", methods=["GET"])
+def home_timeline():
+    if not is_logged_in():
+        app.logger.debug("not logged in")
+        return redirect(url_for("login"))
+
+    user_id = db.get_session(session["session_id"])
+    username = db.get_username(user_id)
+
+    timeline = db.get_home_timeline(username)
+
+    timeline = update_timeline(timeline)
+    app.logger.debug(timeline)
+    return render_template(
+        "timeline.html", timeline=timeline, page_title="Your Timeline"
+    )
+
+
+def update_timeline(timeline):
+    for post in timeline:
+        if "image_id" in post:
+            post["image_url"] = upload.create_presigned_url(post["image_id"])
+
+    return timeline
 
 
 @app.route("/post", methods=["POST"])
@@ -179,10 +238,28 @@ def post():
         return redirect(url_for("logout"))
     user_id = db.get_session(session["session_id"])
     username = db.get_username(user_id)
+    uploadImage = False
+
+    try:
+        if "pic" in request.files:
+            image = request.files["pic"]
+            if image.filename != "":
+                uploadImage = True
+                image_id = upload_file(image)
+    except:
+        # upload failed
+        uploadImage = False
 
     tweet = request.form["tweet"]
     referrer = request.referrer
-    db.put_user_post(username, tweet)
+    if uploadImage:
+        db.put_user_post(username, tweet, image_id)
+    else:
+        db.put_user_post(username, tweet)
+
+    followers = db.get_followers(username)
+    app.logger.debug(followers)
+
     return redirect(referrer)
 
 
@@ -201,35 +278,112 @@ def google_debug():
     return "You are not currently logged in."
 
 
-@app.route("/upload", methods=["POST"])
-def upload_file():
-    app.logger.debug(dict(request.files))
-    # A
-    if "user_file" not in request.files:
-        return "No user_file key in request.files"
-
-    # B
-    file = request.files["user_file"]
-
-    """
-        These attributes are also available
-
-        file.filename               # The actual name of the file
-        file.content_type
-        file.content_length
-        file.mimetype
-
-    """
-
-    # C.
-    if file.filename == "":
-        return "Please select a file"
-
-    # D.
-    if file and upload.allowed_file(file.filename):
-        output = upload.upload_file_to_s3(file)
-        # return str(output)
-        return upload.create_presigned_url(output)
+def upload_file(image):
+    if image and upload.allowed_file(image.filename):
+        output = upload.upload_file_to_s3(image)
+        return str(output)
+        # return upload.create_presigned_url(output)
 
     else:
-        return redirect("/")
+        raise Exception("upload failed")
+
+
+@app.route("/users")
+def get_userbase():
+    logged_in = False
+    if is_logged_in():
+        session_id = session["session_id"]
+        if db.existing_session(session_id):
+            logged_in = True
+    user_ids = db.get_all_user_id()
+    users = db.get_all_user_details(user_ids)
+
+    if logged_in:
+        user_id = db.get_session(session["session_id"])
+        username = db.get_username(user_id)
+        following = db.get_followings(username)
+        for user in users:
+            if user["user_id"] in following:
+                user["following"] = True
+            else:
+                user["following"] = False
+        return render_template(
+            "users.html",
+            logged_in=logged_in,
+            users=users,
+            page_title="All Users",
+            current_user=username,
+        )
+    app.logger.debug(users)
+    return render_template(
+        "users.html", logged_in=logged_in, users=users, page_title="All Users"
+    )
+
+
+@app.route("/user/<username>", methods=["GET"])
+def get_user_profile(username):
+    timeline = db.get_user_timeline(username)
+    timeline = update_timeline(timeline)
+
+    logged_in = False  # or same user
+    following = False
+    if is_logged_in():
+        session_id = session["session_id"]
+        if db.existing_session(session_id):
+            logged_in = True
+            user_id = db.get_session(session["session_id"])
+            current_username = db.get_username(user_id)
+            following = db.existing_following(current_username, username)
+            if current_username == username:
+                logged_in = False
+
+    return render_template(
+        "user.html",
+        logged_in=logged_in,
+        timeline=timeline,
+        page_title=username + "'s Tweets",
+        following=following,
+        username=username,
+    )
+
+
+@app.route("/follow", methods=["POST"])
+def follow():
+    if not is_logged_in():
+        return redirect(url_for("login"))
+    session_id = session["session_id"]
+    if not db.existing_session(session_id):
+        return redirect(url_for("logout"))
+    user_id = db.get_session(session["session_id"])
+    username = db.get_username(user_id)
+
+    following_username = request.form["following_username"]
+    referrer = request.referrer
+    db.put_follow(username, following_username)
+    return redirect(referrer)
+
+
+# html forms does not support DELETE
+@app.route("/unfollow", methods=["POST"])
+def unfollow():
+    if not is_logged_in():
+        return redirect(url_for("login"))
+    session_id = session["session_id"]
+    if not db.existing_session(session_id):
+        return redirect(url_for("logout"))
+    user_id = db.get_session(session["session_id"])
+    username = db.get_username(user_id)
+
+    following_username = request.form["following_username"]
+    referrer = request.referrer
+    db.delete_follow(username, following_username)
+    return redirect(referrer)
+
+
+@app.route("/favicon.ico")
+def favicon():
+    return send_from_directory(
+        os.path.join(app.root_path, "static"),
+        "favicon.ico",
+        mimetype="image/vnd.microsoft.icon",
+    )

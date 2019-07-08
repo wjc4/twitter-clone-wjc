@@ -63,29 +63,10 @@
           <i class="fas fa-fw fa-smile-beam"></i>
           <span>Profile</span></a>
       </li>
-
-      <script>
-
-        function setActiveSideBar() {
-          var dict = {
-            "/profile": "profile",
-            "/home": "home",
-            "/global": "global"
-          };
-          var pathname = window.location.pathname
-          if (pathname in dict) {
-            document.getElementById(dict[pathname]).classList.add('active');
-          }
-
-
-        }
-        setActiveSideBar()
-
-      </script>
       <!-- Divider -->
       <hr class="sidebar-divider d-none d-md-block">
       <!-- Nav Item - Dashboard -->
-      <li id="users" class="nav-item">
+      <li id="users" class="nav-item active">
         <a class="nav-link" href="users">
           <i class="fas fa-fw fa-user-friends"></i>
           <span>Users</span></a>
@@ -309,126 +290,65 @@
           <!-- Page Heading -->
           <div class="d-sm-flex align-items-center justify-content-between mb-4">
             <h1 class="h3 mb-0 text-gray-800"> {{ page_title }} </h1>
-
-
-            <div class="dropdown no-arrow">
-              <a class="dropdown-toggle d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" href="#"
-                role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                <i class="fas fa-comment-alt fa-sm text-white-50"></i>&nbsp Say Something
-              </a>
-              <div class="dropdown-menu dropdown-menu-right dropdown-menu-tweet shadow animated--fade-in mw-30rem">
-                <form id="tweet_form" class="mx-md-3 my-2 my-md-0 mw-100" action="{{ url_for('post') }}" method="post"
-                  enctype="multipart/form-data">
-                  <div class="input-group">
-                    <script>
-                      function pressed(e) {
-                        // Has the enter key been pressed?
-                        if ((window.event ? event.keyCode : e.which) == 13) {
-                          // If it has been so, manually submit the <form>
-                          document.getElementById('tweet_form').submit();
-                        }
-                      }
-                    </script>
-                    <textarea onkeydown="pressed(event)" form="tweet_form" name="tweet"
-                      class="input mt-2 form-control bg-light border-0" rows="3" placeholder="Tweet..."></textarea>
-
-                  </div>
-
-                  <div class="input-group mt-2">
-
-                    <div id="outerImage" class="outer" style="display: none;">
-                      <img id="uploadPreview" style="width: 100px; height: 100px; " />
-                      <div class="overlay" onclick="RemoveImage();">
-                        <p class="text"><i class="far fa-trash-alt"></i></p>
-                      </div>
-                    </div>
-                    <label id="uploadImageButton" for="uploadImage"
-                      class="mt-2 d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i
-                        class="fas fa-image fa-sm text-white-50"></i>&nbsp Attach Image</label>
-
-                    <input id="uploadImage" type="file" name="pic" accept="image/png, image/jpeg, image/gif"
-                      onchange="PreviewImage();" style="display: none" />
-                    <script type="text/javascript">
-
-                      function PreviewImage() {
-                        var oFReader = new FileReader();
-                        oFReader.readAsDataURL(document.getElementById("uploadImage").files[0]);
-
-                        oFReader.onload = function (oFREvent) {
-                          document.getElementById("uploadPreview").src = oFREvent.target.result;
-
-                          document.getElementById("outerImage").style.display = "flex";
-                          document.getElementById("uploadImageButton").style.visibility = "hidden";
-                        };
-                      };
-
-                      function RemoveImage() {
-                        document.getElementById("uploadPreview").removeAttribute('src');
-                        document.getElementById("uploadImage").value = "";
-                        document.getElementById("outerImage").style.display = "none";
-                        document.getElementById("uploadImageButton").style.visibility = "visible";
-                      }
-
-                    </script>
-                  </div>
-
-                  <button type="submit" class="mt-2 d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" href="#">
-                    <i class="fas fa-feather-alt fa-sm text-white-50"></i>&nbsp Post!
-
-                  </button>
-                </form>
-                <a class="dropdown-item">
-
-                </a>
-
-              </div>
-            </div>
-
-
           </div>
 
           <!-- Content Row -->
+
+
           <div class="row">
 
-            {% for post in timeline %}
-            <!-- Dropdown Card Example START-->
-            <div class="col-xl-12 col-lg-12">
+            {% for user in users %}
+            <div class="col-sm-12 col-lg-6">
+              <!-- Basic Card Example -->
               <div class="card shadow mb-4">
-                <!-- Card Header - Dropdown -->
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                  <div class="d-flex flex-row">
-                    <a href="/user/{{ post.username }}">
-                      <h6 class="m-0 font-weight-bold text-primary">{{ post.display_name }}</h6>
-                    </a>
-                    <h6 class="px-1 m-0">@{{ post.username }}</h6>
-                    <h6 class="px-1 m-0 epoch">{{ post.time_stamp }}</h6>
+                <div class="card-header py-3">
+                  <div class="d-sm-flex align-items-center justify-content-between">
+                    <div class="d-flex flex-row ">
+                      <a href="/user/{{ user.username }}">
+                        <h6 class="m-0 font-weight-bold text-primary">{{ user.display_name }}</h6>
+                      </a>
+                      <h6 class="px-1 m-0">@{{ user.username }}</h6>
+                    </div>
+
+
+                    {% if not user.following and user.username != current_user %}
+
+                    <!-- start of following button -->
+                    <form action="{{ url_for('follow') }}" method="post">
+                      <input type="hidden" name="following_username" id="following_username"
+                        value="{{ user.username }}">
+                      <button type="submit" class="btn btn-sm btn-primary shadow-sm" href="#">
+                        <i class="fas fa-plus fa-sm text-white-50"></i>&nbsp Follow
+
+                      </button>
+                    </form>
+                    <!-- end of following button -->
+                    {% endif %}
+                    {% if user.following %}
+
+                    <!-- start of following button -->
+
+                    <form action="{{ url_for('unfollow') }}" method="post">
+                      <input type="hidden" name="following_username" id="following_username"
+                        value="{{ user.username }}">
+                      <button type="submit" class="btn btn-sm btn-primary shadow-sm follow-button">
+                        <i class="fas fa-minus fa-sm text-white-50 following-icon" style="display: none"></i><a
+                          class="unfollow-text">Following</a>
+
+                      </button>
+
+                    </form>
+                    <!-- end of following button -->
+                    {% endif %}
 
                   </div>
-                  <div class="dropdown no-arrow">
-                    <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown"
-                      aria-haspopup="true" aria-expanded="false">
-                      <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
-                    </a>
-                    <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in"
-                      aria-labelledby="dropdownMenuLink">
-                      <div class="dropdown-header">Options:</div>
-                      <a class="dropdown-item" href="#">Like</a>
-                      <a class="dropdown-item" href="#">Retweet</a>
-                      <div class="dropdown-divider"></div>
-                      <a class="dropdown-item" href="#">Delete</a>
-                      <a class="dropdown-item" href="#">Report</a>
-                    </div>
-                  </div>
+
                 </div>
-                <!-- Card Body -->
                 <div class="card-body">
-                  {{ post.text }}
-                  {% if post.image_url %}
-                  <br>
-                  <img class="mt-2" id="uploadPreview" style="width: auto; max-height: 200px;"
-                    src="{{ post.image_url }}" />
-                  {% else %}
-                  {% endif %}
+                  Profile Description
+
+
+
                 </div>
               </div>
             </div>
@@ -440,77 +360,91 @@
               </div>
             </div>
             {% endfor %}
-
-            <script type="text/javascript">
-              var epoch_time = document.querySelectorAll(".epoch");
-              for (var i = 0; i < epoch_time.length; i++) {
-                var d = new Date(0)
-                d.setUTCSeconds(parseInt(epoch_time[i].textContent));
-                epoch_time[i].textContent = "Posted on: " + d.toLocaleDateString() + " " + d.toLocaleTimeString()
-              }
-
-            </script>
-
           </div>
-          <!-- End of Main Content -->
 
-          <!-- Footer -->
-          <footer class="sticky-footer bg-white">
-            <div class="container my-auto">
-              <div class="copyright text-center my-auto">
-                <span>Copyright &copy; shady-inc</span>
-              </div>
-            </div>
-          </footer>
-          <!-- End of Footer -->
+
+
+
+
 
         </div>
-        <!-- End of Content Wrapper -->
+        <!-- End of Main Content -->
+
+        <!-- Footer -->
+        <footer class="sticky-footer bg-white">
+          <div class="container my-auto">
+            <div class="copyright text-center my-auto">
+              <span>Copyright &copy; shady-inc</span>
+            </div>
+          </div>
+        </footer>
+        <!-- End of Footer -->
 
       </div>
-      <!-- End of Page Wrapper -->
+      <!-- End of Content Wrapper -->
 
-      <!-- Scroll to Top Button-->
-      <a class="scroll-to-top rounded" href="#page-top">
-        <i class="fas fa-angle-up"></i>
-      </a>
+    </div>
+    <!-- End of Page Wrapper -->
 
-      <!-- Logout Modal-->
-      <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog" role="document">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
-              <button class="close" type="button" data-dismiss="modal" aria-label="Close">
-                <span aria-hidden="true">×</span>
-              </button>
-            </div>
-            <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
-            <div class="modal-footer">
-              <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
-              <a class="btn btn-primary" href="logout">Logout</a>
-            </div>
+    <!-- Scroll to Top Button-->
+    <a class="scroll-to-top rounded" href="#page-top">
+      <i class="fas fa-angle-up"></i>
+    </a>
+
+    <!-- Logout Modal-->
+    <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+      aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">×</span>
+            </button>
+          </div>
+          <div class="modal-body">Select "Logout" below if you are ready to end your current session.</div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+            <a class="btn btn-primary" href="logout">Logout</a>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Bootstrap core JavaScript-->
-      <script src="static/vendor/jquery/jquery.min.js"></script>
-      <script src="static/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <!-- Bootstrap core JavaScript-->
+    <script src="static/vendor/jquery/jquery.min.js"></script>
+    <script src="static/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 
-      <!-- Core plugin JavaScript-->
-      <script src="static/vendor/jquery-easing/jquery.easing.min.js"></script>
+    <!-- Core plugin JavaScript-->
+    <script src="static/vendor/jquery-easing/jquery.easing.min.js"></script>
 
-      <!-- Custom scripts for all pages-->
-      <script src="static/js/sb-admin-2.min.js"></script>
+    <!-- Custom scripts for all pages-->
+    <script src="static/js/sb-admin-2.min.js"></script>
 
-      <!-- Page level plugins -->
-      <script src="static/vendor/chart.js/Chart.min.js"></script>
+    <!-- Page level plugins -->
+    <script src="static/vendor/chart.js/Chart.min.js"></script>
 
-      <!-- Page level custom scripts -->
-      <script src="static/js/demo/chart-area-demo.js"></script>
-      <script src="static/js/demo/chart-pie-demo.js"></script>
+    <!-- Page level custom scripts -->
+    <script src="static/js/demo/chart-area-demo.js"></script>
+    <script src="static/js/demo/chart-pie-demo.js"></script>
+
+    <!-- Script for unfollow -->
+    <script>
+      $(document).ready(function () {
+        $('.follow-button').hover(function () {
+          $(this).removeClass('btn-primary');
+          $(this).addClass('btn-danger');
+          $(this).children(".following-icon").css("display", "inline-block");
+          $(this).children(".unfollow-text").html('&nbsp Unfollow');
+        }, function () {
+          $(this).removeClass('btn-danger');
+          $(this).addClass('btn-primary');
+          $(this).children('p.filled-text')
+          $(this).children(".following-icon").css("display", "none");
+          $(this).children(".unfollow-text").html('Following');
+        });
+      });
+    </script>
 
 </body>
 
