@@ -5,7 +5,7 @@ import boto3, os, uuid
 # use this for local minio
 s3 = boto3.client("s3", endpoint_url="http://localhost:9000")
 s3_bucket = os.environ.get("S3_BUCKET")
-s3_url = f"http://{s3_bucket}.s3.amazonaws.com/"
+# s3_url = f"http://{s3_bucket}.s3.amazonaws.com/"
 
 from werkzeug.utils import secure_filename
 
@@ -69,3 +69,13 @@ def upload_file_to_s3(file, acl="public-read"):
     return destination_filename
     # return "%s/%s/%s" % (s3.meta.endpoint_url, s3_bucket, destination_filename)
     # return "{}{}".format(s3_url, destination_filename)
+
+
+def delete_file_from_s3(key):
+    # Response Syntax
+    # {
+    #     'DeleteMarker': True|False,
+    #     'VersionId': 'string',
+    #     'RequestCharged': 'requester'
+    # }
+    return s3.delete_object(Bucket=s3_bucket, Key=key)

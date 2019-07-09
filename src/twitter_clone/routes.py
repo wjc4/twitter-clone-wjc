@@ -1,4 +1,6 @@
-import logging, sys, os, uuid, json
+import logging, sys, os, uuid, json, re
+from distutils import util
+
 from flask import (
     Flask,
     session,
@@ -90,12 +92,22 @@ def signup():
     if request.method == "GET":
         return app.send_static_file("register.html")
         # return render_template("signup.html", error=error)
-    # @TODO enforce valid username
     app.logger.debug(dict(request.form))
     username = request.form["username"]
+    # check username
+    user_pattern = re.compile("^[a-z0-9_]{3,15}$")
+    if not bool(user_pattern.match(username)):
+        return "invalid username. username must match ^[a-z0-9_]{3,15}$"
     password = request.form["password"]
+    repeat_password = request.form["repeat_password"]
+    if password != repeat_password:
+        return "passwords does not match"
+    password_pattern = re.compile("^[A-Za-z0-9!@#$%^&+=]{3,15}$")
+    if not bool(password_pattern.match(password)):
+        return "invalid password. password must match ^[A-Za-z0-9!@#$%^&+=]{3,15}$"
     display_name = request.form["display_name"]
     # @TODO catch errors
+
     user_id = db.create_user(username, password, display_name)
 
     create_user_session(user_id)
@@ -125,6 +137,9 @@ def signup_google():
     # @TODO enforce valid username
     app.logger.debug(dict(request.form))
     username = request.form["username"]
+    user_pattern = re.compile("^[a-z0-9_]{3,15}$")
+    if not bool(user_pattern.match(username)):
+        return "invalid username. username must match ^[a-z0-9_]{3,15}$"
     password = request.form["username"]
     display_name = request.form["display_name"]
     # @TODO catch errors
@@ -176,30 +191,46 @@ def profile():
 
     user_id = db.get_session(session["session_id"])
     username = db.get_username(user_id)
+    user = db.get_user(user_id)
+    app.logger.debug(user)
+    user["followers"] = db.get_followers_num(username)
+    user["followings"] = db.get_followings_num(username)
 
     timeline = db.get_user_timeline(username)
 
-    timeline = update_timeline(timeline)
-    app.logger.debug(timeline)
-    return render_template("timeline.html", timeline=timeline, page_title="Your Tweets")
+    timeline = update_timeline(timeline, username)
+
+    return render_template(
+        "timeline.html",
+        timeline=timeline,
+        page_title="Your Tweets",
+        logged_in=True,
+        user=user,
+    )
     # return render_template("profile.html", timeline=timeline)
 
 
 @app.route("/global", methods=["GET"])
 def global_timeline():
-    # if not is_logged_in():
-    #     app.logger.debug("not logged in")
-    #     return redirect(url_for("login"))
+    logged_in = False
+    username = None
+    if is_logged_in():
+        logged_in = True
+        user_id = db.get_session(session["session_id"])
+        username = db.get_username(user_id)
 
     # user_id = db.get_session(session["session_id"])
     # username = db.get_username(user_id)
 
     timeline = db.get_global_timeline()
 
-    timeline = update_timeline(timeline)
+    timeline = update_timeline(timeline, username)
     app.logger.debug(timeline)
     return render_template(
-        "timeline.html", timeline=timeline, page_title="Global Tweets"
+        "timeline.html",
+        timeline=timeline,
+        page_title="Global Tweets",
+        logged_in=logged_in,
     )
 
 
@@ -214,17 +245,19 @@ def home_timeline():
 
     timeline = db.get_home_timeline(username)
 
-    timeline = update_timeline(timeline)
+    timeline = update_timeline(timeline, username)
     app.logger.debug(timeline)
     return render_template(
-        "timeline.html", timeline=timeline, page_title="Your Timeline"
+        "timeline.html", timeline=timeline, page_title="Your Timeline", logged_in=True
     )
 
 
-def update_timeline(timeline):
+def update_timeline(timeline, username=None):
     for post in timeline:
         if "image_id" in post:
             post["image_url"] = upload.create_presigned_url(post["image_id"])
+        if username is not None:
+            post["editable"] = username == post["username"]
 
     return timeline
 
@@ -260,6 +293,88 @@ def post():
     followers = db.get_followers(username)
     app.logger.debug(followers)
 
+    return redirect(referrer)
+
+
+@app.route("/post/<post_id>", methods=["GET"])
+def get_post(post_id):
+    if not is_logged_in():
+        return redirect(url_for("login"))
+    session_id = session["session_id"]
+    if not db.existing_session(session_id):
+        return redirect(url_for("logout"))
+    user_id = db.get_session(session["session_id"])
+    username = db.get_username(user_id)
+    post = db.get_post(post_id)
+
+    if post["user_id"] != user_id:
+        raise Exception("Unauthorized")
+    if "image_id" in post:
+        post["image_url"] = upload.create_presigned_url(post["image_id"])
+    return render_template(
+        "post.html", post=post, page_title="Edit Tweet", current_user=username
+    )
+
+
+@app.route("/post/<post_id>", methods=["PUT"])
+@app.route("/post/<post_id>/edit", methods=["POST"])
+def edit_post(post_id):
+    if not is_logged_in():
+        return redirect(url_for("login"))
+    session_id = session["session_id"]
+    if not db.existing_session(session_id):
+        return redirect(url_for("logout"))
+    user_id = db.get_session(session["session_id"])
+    username = db.get_username(user_id)
+    post = db.get_post(post_id)
+
+    if post["user_id"] != user_id:
+        raise Exception("Unauthorized")
+
+    if util.strtobool(request.form["new_image"]):
+        uploadImage = False
+
+        try:
+            # Delete Old Image
+            if "image_id" in post:
+                upload.delete_file_from_s3(post["image_id"])
+                del post["image_id"]
+            # Upload new Image
+            if "pic" in request.files:
+                image = request.files["pic"]
+                if image.filename != "":
+                    uploadImage = True
+                    image_id = upload_file(image)
+                    post["image_id"] = image_id
+        except Exception as e:
+            # upload failed
+            app.logger.error(e)
+
+    post["text"] = request.form["tweet"]
+    db.edit_post(post)
+
+    return redirect(url_for("profile"))
+
+
+@app.route("/post/<post_id>", methods=["DELETE"])
+@app.route("/post/<post_id>/delete", methods=["GET"])
+def delete_post(post_id):
+    if not is_logged_in():
+        return redirect(url_for("login"))
+    session_id = session["session_id"]
+    if not db.existing_session(session_id):
+        return redirect(url_for("logout"))
+    user_id = db.get_session(session["session_id"])
+    username = db.get_username(user_id)
+    post = db.get_post(post_id)
+
+    if post["user_id"] != user_id:
+        raise Exception("Unauthorized")
+    if "image_id" in post:
+        upload.delete_file_from_s3(post["image_id"])
+
+    db.delete_post(username, post_id)
+    referrer = request.referrer
     return redirect(referrer)
 
 
@@ -324,6 +439,10 @@ def get_userbase():
 def get_user_profile(username):
     timeline = db.get_user_timeline(username)
     timeline = update_timeline(timeline)
+    user_id = db.get_user_id(username)
+    user = db.get_user(user_id)
+    user["followers"] = db.get_followers_num(username)
+    user["followings"] = db.get_followings_num(username)
 
     logged_in = False  # or same user
     following = False
@@ -343,12 +462,84 @@ def get_user_profile(username):
         timeline=timeline,
         page_title=username + "'s Tweets",
         following=following,
-        username=username,
+        user=user,
     )
 
 
-@app.route("/follow", methods=["POST"])
-def follow():
+@app.route("/user/<username>/follower", methods=["GET"])
+def get_user_follower(username):
+    logged_in = False
+    if is_logged_in():
+        session_id = session["session_id"]
+        if db.existing_session(session_id):
+            logged_in = True
+
+    user_ids = db.get_followers(username)
+    users = db.get_all_user_details(user_ids)
+
+    if logged_in:
+        current_user_id = db.get_session(session["session_id"])
+        current_username = db.get_username(current_user_id)
+        following = db.get_followings(current_username)
+        for user in users:
+            if user["user_id"] in following:
+                user["following"] = True
+            else:
+                user["following"] = False
+        return render_template(
+            "list_users.html",
+            logged_in=logged_in,
+            users=users,
+            page_title="@" + username + "'s Followers",
+            current_user=username,
+        )
+
+    return render_template(
+        "list_users.html",
+        logged_in=logged_in,
+        users=users,
+        page_title="@" + username + "'s Followers",
+    )
+
+
+@app.route("/user/<username>/following", methods=["GET"])
+def get_user_following(username):
+    logged_in = False
+    if is_logged_in():
+        session_id = session["session_id"]
+        if db.existing_session(session_id):
+            logged_in = True
+
+    user_ids = db.get_followings(username)
+    users = db.get_all_user_details(user_ids)
+
+    if logged_in:
+        current_user_id = db.get_session(session["session_id"])
+        current_username = db.get_username(current_user_id)
+        following = db.get_followings(current_username)
+        for user in users:
+            if user["user_id"] in following:
+                user["following"] = True
+            else:
+                user["following"] = False
+        return render_template(
+            "list_users.html",
+            logged_in=logged_in,
+            users=users,
+            page_title="@" + username + "'s Followings",
+            current_user=username,
+        )
+
+    return render_template(
+        "list_users.html",
+        logged_in=logged_in,
+        users=users,
+        page_title="@" + username + "'s Followings",
+    )
+
+
+@app.route("/follow/<following_username>", methods=["POST"])
+def follow(following_username):
     if not is_logged_in():
         return redirect(url_for("login"))
     session_id = session["session_id"]
@@ -357,15 +548,16 @@ def follow():
     user_id = db.get_session(session["session_id"])
     username = db.get_username(user_id)
 
-    following_username = request.form["following_username"]
+    # following_username = request.form["following_username"]
     referrer = request.referrer
     db.put_follow(username, following_username)
     return redirect(referrer)
 
 
 # html forms does not support DELETE
-@app.route("/unfollow", methods=["POST"])
-def unfollow():
+@app.route("/follow//<following_username>", methods=["DELETE"])
+@app.route("/unfollow/<following_username>", methods=["POST"])
+def unfollow(following_username):
     if not is_logged_in():
         return redirect(url_for("login"))
     session_id = session["session_id"]
@@ -374,7 +566,7 @@ def unfollow():
     user_id = db.get_session(session["session_id"])
     username = db.get_username(user_id)
 
-    following_username = request.form["following_username"]
+    # following_username = request.form["following_username"]
     referrer = request.referrer
     db.delete_follow(username, following_username)
     return redirect(referrer)

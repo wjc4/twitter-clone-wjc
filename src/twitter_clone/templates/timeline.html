@@ -306,11 +306,27 @@
         <!-- Begin Page Content -->
         <div class="container-fluid">
 
+
+          {% if user %}
+          <div class="d-sm-flex align-items-center justify-content-between mb-2">
+            <h1 class="h3 mb-0 text-gray-800"> {{ user.display_name }}</h1>
+          </div>
+          <div class=" d-sm-flex align-items-center justify-content-between mb-4">
+            <h6 class="mb-0 text-gray-800"> @{{ user.username }}</h6>
+          </div>
+          <div class=" d-sm-flex align-items-center justify-content-between mb-4">
+            <h6 class="mb-0 text-gray-800"> <a
+                href="{{ url_for('get_user_following', username=user.username) }}">{{ user.followings }}</a>
+              Following
+              &nbsp <a href="{{ url_for('get_user_follower', username=user.username) }}">{{ user.followers }}</a>
+              Followers </h6>
+          </div>
+          {% endif %}
           <!-- Page Heading -->
           <div class="d-sm-flex align-items-center justify-content-between mb-4">
             <h1 class="h3 mb-0 text-gray-800"> {{ page_title }} </h1>
 
-
+            {% if logged_in %}
             <div class="dropdown no-arrow">
               <a class="dropdown-toggle d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" href="#"
                 role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -383,6 +399,7 @@
 
               </div>
             </div>
+            {% endif %}
 
 
           </div>
@@ -404,6 +421,7 @@
                     <h6 class="px-1 m-0 epoch">{{ post.time_stamp }}</h6>
 
                   </div>
+                  {% if logged_in %}
                   <div class="dropdown no-arrow">
                     <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown"
                       aria-haspopup="true" aria-expanded="false">
@@ -412,13 +430,19 @@
                     <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in"
                       aria-labelledby="dropdownMenuLink">
                       <div class="dropdown-header">Options:</div>
+                      {% if post.editable %}
+                      <a class="dropdown-item" href="{{ url_for('get_post', post_id=post.id) }}">Edit</a>
+                      {% endif %}
                       <a class="dropdown-item" href="#">Like</a>
                       <a class="dropdown-item" href="#">Retweet</a>
                       <div class="dropdown-divider"></div>
-                      <a class="dropdown-item" href="#">Delete</a>
+                      {% if post.editable %}
+                      <a class="dropdown-item" href="{{ url_for('delete_post', post_id=post.id) }}">Delete</a>
+                      {% endif %}
                       <a class="dropdown-item" href="#">Report</a>
                     </div>
                   </div>
+                  {% endif %}
                 </div>
                 <!-- Card Body -->
                 <div class="card-body">

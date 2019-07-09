@@ -32,7 +32,7 @@
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
 
       <!-- Sidebar - Brand -->
-      <a class="sidebar-brand d-flex align-items-center justify-content-center" href=".">
+      <a class="sidebar-brand d-flex align-items-center justify-content-center" href="../">
         <div class="sidebar-brand-icon">
           <i class='hennge-icon'></i>
         </div>
@@ -289,51 +289,8 @@
         <div class="container-fluid">
 
           <!-- Page Heading -->
-          <div class="d-sm-flex align-items-center justify-content-between mb-2">
-            <h1 class="h3 mb-0 text-gray-800"> {{ user.display_name }} &nbsp</h1>
-            {% if logged_in and not following %}
-
-            <!-- start of following button -->
-            <form action="{{ url_for('follow', following_username=user.username) }}" method="post">
-              <input type="hidden" name="following_username" id="following_username" value="{{ user.username }}">
-              <button type="submit" class="btn btn-sm btn-primary shadow-sm" href="#">
-                <i class="fas fa-plus fa-sm text-white-50"></i>&nbsp Follow
-
-              </button>
-            </form>
-            <!-- end of following button -->
-            {% endif %}
-            {% if following %}
-
-            <!-- start of following button -->
-            <form action="{{ url_for('unfollow', following_username=user.username) }}" method="post">
-              <input type="hidden" name="following_username" id="following_username" value="{{ user.username }}">
-              <button type="submit" class="btn btn-sm btn-primary shadow-sm follow-button">
-                <i class="fas fa-minus fa-sm text-white-50 following-icon" style="display: none"></i><a
-                  class="unfollow-text">Following</a>
-
-              </button>
-
-            </form>
-            <!-- end of following button -->
-            {% endif %}
-
-          </div>
-          <div class=" d-sm-flex align-items-center justify-content-between mb-4">
-            <h6 class="mb-0 text-gray-800"> @{{ user.username }}</h6>
-          </div>
-          <div class=" d-sm-flex align-items-center justify-content-between mb-4">
-            <h6 class="mb-0 text-gray-800"> <a
-                href="{{ url_for('get_user_following', username=user.username) }}">{{ user.followings }}</a>
-              Following
-              &nbsp <a href="{{ url_for('get_user_follower', username=user.username) }}">{{ user.followers }}</a>
-              Followers </h6>
-          </div>
-
-          <!-- Page Heading -->
           <div class="d-sm-flex align-items-center justify-content-between mb-4">
             <h1 class="h3 mb-0 text-gray-800"> {{ page_title }} </h1>
-
 
 
 
@@ -343,54 +300,112 @@
           <!-- Content Row -->
           <div class="row">
 
-            {% for post in timeline %}
             <!-- Dropdown Card Example START-->
             <div class="col-xl-12 col-lg-12">
               <div class="card shadow mb-4">
                 <!-- Card Header - Dropdown -->
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                   <div class="d-flex flex-row">
+
                     <h6 class="m-0 font-weight-bold text-primary">{{ post.display_name }}</h6>
+
                     <h6 class="px-1 m-0">@{{ post.username }}</h6>
                     <h6 class="px-1 m-0 epoch">{{ post.time_stamp }}</h6>
 
                   </div>
-                  <div class="dropdown no-arrow">
-                    <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown"
-                      aria-haspopup="true" aria-expanded="false">
-                      <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
-                    </a>
-                    <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in"
-                      aria-labelledby="dropdownMenuLink">
-                      <div class="dropdown-header">Options:</div>
-                      <a class="dropdown-item" href="#">Like</a>
-                      <a class="dropdown-item" href="#">Retweet</a>
-                      <div class="dropdown-divider"></div>
-                      <a class="dropdown-item" href="#">Delete</a>
-                      <a class="dropdown-item" href="#">Report</a>
-                    </div>
-                  </div>
                 </div>
                 <!-- Card Body -->
                 <div class="card-body">
-                  {{ post.text }}
-                  {% if post.image_url %}
-                  <br>
-                  <img class="mt-2" id="uploadPreview" style="width: auto; max-height: 200px;"
-                    src="{{ post.image_url }}" />
-                  {% else %}
-                  {% endif %}
+                  <form id="tweet_form" class="mx-md-3 my-2 my-md-0 mw-100"
+                    action="{{ url_for('edit_post', post_id=post.id) }}" method="post" enctype="multipart/form-data">
+                    <div class="input-group">
+                      <script>
+                        function pressed(e) {
+                          // Has the enter key been pressed?
+                          if ((window.event ? event.keyCode : e.which) == 13) {
+                            // If it has been so, manually submit the <form>
+                            document.getElementById('tweet_form').submit();
+                          }
+                        }
+                      </script>
+                      <textarea onkeydown="pressed(event)" form="tweet_form" name="tweet"
+                        class="input mt-2 form-control bg-light border-0" rows="3"
+                        placeholder="Tweet...">{{ post.text }}</textarea>
+
+                    </div>
+
+                    <div class="input-group mt-2">
+
+                      {% if post.image_url %}
+                      <div id="outerImage" class="outer" style="display: flex;">
+                        <img id="uploadPreview" style="width: 100px; height: 100px;" src="{{ post.image_url }}" />
+                        <div class="overlay" onclick="RemoveImage();">
+                          <p class="text"><i class="far fa-trash-alt"></i></p>
+                        </div>
+                      </div>
+                      <label id="uploadImageButton" for="uploadImage"
+                        class="mt-2 d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"
+                        style="visibility:hidden"><i class="fas fa-image fa-sm text-white-50"></i>&nbsp Attach
+                        Image</label>
+
+                      <input id="uploadImage" type="file" name="pic" accept="image/png, image/jpeg, image/gif"
+                        onchange="PreviewImage();" style="display: none" />
+                      <input type="hidden" id="new-image" name="new_image" value="false">
+
+                      {% else %}
+                      <div id="outerImage" class="outer" style="display: none;">
+                        <img id="uploadPreview" style="width: 100px; height: 100px; " />
+                        <div class="overlay" onclick="RemoveImage();">
+                          <p class="text"><i class="far fa-trash-alt"></i></p>
+                        </div>
+                      </div>
+                      <label id="uploadImageButton" for="uploadImage"
+                        class="mt-2 d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i
+                          class="fas fa-image fa-sm text-white-50"></i>&nbsp Attach Image</label>
+
+                      <input id="uploadImage" type="file" name="pic" accept="image/png, image/jpeg, image/gif"
+                        onchange="PreviewImage();" style="display: none" />
+                      <input type="hidden" id="new-image" name="new_image" value="false">
+
+                      {% endif %}
+                      <script type="text/javascript">
+
+                        function PreviewImage() {
+                          var oFReader = new FileReader();
+                          oFReader.readAsDataURL(document.getElementById("uploadImage").files[0]);
+
+                          oFReader.onload = function (oFREvent) {
+                            document.getElementById("uploadPreview").src = oFREvent.target.result;
+
+                            document.getElementById("outerImage").style.display = "flex";
+                            document.getElementById("uploadImageButton").style.visibility = "hidden";
+                            document.getElementById("new-image").value = "true";
+                          };
+                        };
+
+                        function RemoveImage() {
+                          document.getElementById("uploadPreview").removeAttribute('src');
+                          document.getElementById("uploadImage").value = "";
+                          document.getElementById("outerImage").style.display = "none";
+                          document.getElementById("uploadImageButton").style.visibility = "visible";
+                          document.getElementById("new-image").value = "true";
+                        }
+
+                      </script>
+
+
+                    </div>
+
+                    <button type="submit" class="mt-2 d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"
+                      href="#">
+                      <i class="fas fa-feather-alt fa-sm text-white-50"></i>&nbsp Submit Changes
+
+                    </button>
+                  </form>
                 </div>
               </div>
             </div>
             <!-- Dropdown Card Example END-->
-            {% else %}
-            <div class="container my-auto">
-              <div class="copyright text-center my-auto">
-                <span>Express Yourself.</span>
-              </div>
-            </div>
-            {% endfor %}
 
             <script type="text/javascript">
               var epoch_time = document.querySelectorAll(".epoch");
@@ -462,23 +477,6 @@
       <!-- Page level custom scripts -->
       <script src="../static/js/demo/chart-area-demo.js"></script>
       <script src="../static/js/demo/chart-pie-demo.js"></script>
-
-      <script>
-        $(document).ready(function () {
-          $('.follow-button').hover(function () {
-            $(this).removeClass('btn-primary');
-            $(this).addClass('btn-danger');
-            $(this).children(".following-icon").css("display", "inline-block");
-            $(this).children(".unfollow-text").html('&nbsp Unfollow');
-          }, function () {
-            $(this).removeClass('btn-danger');
-            $(this).addClass('btn-primary');
-            $(this).children('p.filled-text')
-            $(this).children(".following-icon").css("display", "none");
-            $(this).children(".unfollow-text").html('Following');
-          });
-        });
-      </script>
 
 </body>
 

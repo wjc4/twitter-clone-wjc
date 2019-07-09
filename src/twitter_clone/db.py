@@ -103,11 +103,21 @@ class DB:
 
     def get_followers(self, username):
         user_id = self.get_user_id(username)
-        following = self.db.smembers("follower:" + user_id)
-        following_list = []
-        for item in following:
-            following_list.append(item.decode("utf-8"))
-        return following_list
+        follower = self.db.smembers("follower:" + user_id)
+        follower_list = []
+        for item in follower:
+            follower_list.append(item.decode("utf-8"))
+        return follower_list
+
+    def get_followings_num(self, username):
+        user_id = self.get_user_id(username)
+        following_num = self.db.scard("following:" + user_id)
+        return following_num
+
+    def get_followers_num(self, username):
+        user_id = self.get_user_id(username)
+        follower_num = self.db.scard("follower:" + user_id)
+        return follower_num
 
     def put_follow(self, follower, following):
         follower_id = self.get_user_id(follower)
@@ -151,17 +161,30 @@ class DB:
 
     def existing_post(self, post_id):
         # @TODO check this. its weird
-        return self.db.exists("post:" + str(post_id, "utf-8"))
+        if type(post_id) != str:
+            post_id = str(post_id, "utf-8")
+        return self.db.exists("post:" + post_id)
 
     def get_post(self, post_id):
         if not self.existing_post(post_id):
             raise Exception("Post not found")
-        post = self.db.hgetall("post:" + str(post_id, "utf-8"))
-        return dict(
-            user_id=post[b"user_id"].decode("utf-8"),
+        if type(post_id) != str:
+            post_id = str(post_id, "utf-8")
+        post = self.db.hgetall("post:" + post_id)
+        user_id = post[b"user_id"].decode("utf-8")
+        user = self.get_user(user_id)
+        item = dict(
+            id=post_id,
+            user_id=user_id,
+            username=user["username"],
+            display_name=user["display_name"],
             time_stamp=post[b"time_stamp"].decode("utf-8"),
             text=post[b"text"].decode("utf-8"),
+            image=util.strtobool(post[b"image"].decode("utf-8")),
         )
+        if item["image"]:
+            item["image_id"] = post[b"image_id"].decode("utf-8")
+        return item
 
     def get_user_timeline(self, username):
         # return all(?) user's post
@@ -172,6 +195,7 @@ class DB:
         for post_id in posts:
             post = self.db.hgetall("post:" + str(post_id, "utf-8"))
             item = dict(
+                id=str(post_id, "utf-8"),
                 username=username,
                 display_name=display_name,
                 time_stamp=post[b"time_stamp"].decode("utf-8"),
@@ -199,6 +223,7 @@ class DB:
                 )
 
             item = dict(
+                id=str(post_id, "utf-8"),
                 username=users[user_id]["username"],
                 display_name=users[user_id]["display_name"],
                 time_stamp=post[b"time_stamp"].decode("utf-8"),
@@ -225,6 +250,7 @@ class DB:
                 )
 
             item = dict(
+                id=str(post_id, "utf-8"),
                 username=users[user_id]["username"],
                 display_name=users[user_id]["display_name"],
                 time_stamp=post[b"time_stamp"].decode("utf-8"),
@@ -280,14 +306,45 @@ class DB:
         self.db.ltrim("gtimeline", 0, 500)
         # @TODO get user's followers and push this tweet to their timeline.
 
+    def edit_post(self, post):
+        post_id = post["id"]
+        if not self.existing_post(post_id):
+            raise Exception("Post not found")
+        if "image_id" in post:
+            item = dict(
+                user_id=post["user_id"],
+                time_stamp=post["time_stamp"],
+                text=post["text"],
+                image=str(True),
+                image_id=post["image_id"],
+            )
+        else:
+            item = dict(
+                user_id=post["user_id"],
+                time_stamp=post["time_stamp"],
+                text=post["text"],
+                image=str(False),
+            )
+        # post details
+        self.db.hmset("post:" + post_id, item)
+
     def delete_post(self, username, post_id):
         if not self.existing_post(post_id):
             raise Exception("Post not found")
         user_id = self.get_user_id(username)
         self.db.delete("post:" + post_id)
         self.db.lrem("posts:" + str(user_id), 1, post_id)
-        self.db.lrem("timeline:" + str(user_id), 1, post_id)
+        self.db.zrem("timeline:" + str(user_id), post_id)
+
         # @TODO delete post from followers timeline
+        # get followers
+        # iterate
+        followers = self.get_followers(username)
+        for follower_id in followers:
+            self.db.zrem("timeline:" + follower_id, post_id)
+
+        # delete from gtimeline
+        self.db.lrem("gtimeline", 1, post_id)
 
     def existing_session(self, session_id):
         return self.db.exists("session:" + session_id)

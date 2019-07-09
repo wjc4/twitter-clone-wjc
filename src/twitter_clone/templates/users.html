@@ -314,7 +314,7 @@
                     {% if not user.following and user.username != current_user %}
 
                     <!-- start of following button -->
-                    <form action="{{ url_for('follow') }}" method="post">
+                    <form action="{{ url_for('follow', following_username=user.username) }}" method="post">
                       <input type="hidden" name="following_username" id="following_username"
                         value="{{ user.username }}">
                       <button type="submit" class="btn btn-sm btn-primary shadow-sm" href="#">
@@ -328,7 +328,7 @@
 
                     <!-- start of following button -->
 
-                    <form action="{{ url_for('unfollow') }}" method="post">
+                    <form action="{{ url_for('unfollow', following_username=user.username) }}" method="post">
                       <input type="hidden" name="following_username" id="following_username"
                         value="{{ user.username }}">
                       <button type="submit" class="btn btn-sm btn-primary shadow-sm follow-button">
