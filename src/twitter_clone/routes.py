@@ -11,16 +11,16 @@ from flask import (
     send_from_directory,
 )
 
-from . import google_auth
+import google_auth
 
-from . import upload
+import upload
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SESSION_SECRET", os.urandom(50))
 
 app.register_blueprint(google_auth.app)
 
-from .db import DB
+from db import DB
 
 with app.app_context():
     # maybe consider opening and closing per request
@@ -36,8 +36,10 @@ def hello_world():
 @app.route("/", methods=["GET"])
 def home():
     if is_logged_in():
-        return redirect(url_for("home_timeline"))
-    return redirect(url_for("global_timeline"))
+        return home_timeline()
+    return global_timeline()
+    #     return redirect(url_for("home_timeline"))
+    # return redirect(url_for("global_timeline"))
     # return app.send_static_file("index.html")
     # return render_template("login.html")
 
@@ -264,6 +266,7 @@ def update_timeline(timeline, username=None):
 
 @app.route("/post", methods=["POST"])
 def post():
+    app.logger.debug("received a post submission")
     if not is_logged_in():
         return redirect(url_for("login"))
     session_id = session["session_id"]
@@ -394,12 +397,15 @@ def google_debug():
 
 
 def upload_file(image):
+    app.logger.debug("Attempting to upload image")
     if image and upload.allowed_file(image.filename):
         output = upload.upload_file_to_s3(image)
+        app.logger.debug("Upload success")
         return str(output)
         # return upload.create_presigned_url(output)
 
     else:
+        app.logger.debug("Upload failed due to invalid image")
         raise Exception("upload failed")
 
 

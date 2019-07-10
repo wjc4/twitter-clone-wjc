@@ -1,16 +1,20 @@
 import redis
 import flask
 import time
+import os
 from distutils import util
 
 
 class DB:
     def __init__(self):
         try:
-            self.db = redis.StrictRedis(host="127.0.0.1", port=6379, db=0, password="")
+            self.db = redis.StrictRedis(
+                host=os.environ.get("REDIS_HOST"), port=6379, db=0, password=""
+            )
             flask.current_app.logger.debug("Connected to Redis")
-        except:
+        except Exception as e:
             flask.current_app.logger.error("Failed to connect to Redis")
+            flask.current_app.logger.error(e)
 
     # @TODO make this atomic
     def create_user(self, username, password, display_name, sso=False):

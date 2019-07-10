@@ -7,3 +7,5 @@ __pycache__
 .vscode
 .idea
 *.sh
+*.service
+env
