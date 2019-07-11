@@ -1,9 +1,9 @@
 import boto3, os, uuid
 
 # use this for aws
-# s3 = boto3.client("s3")
+s3 = boto3.client("s3")
 # use this for local minio
-s3 = boto3.client("s3", endpoint_url="http://localhost:9000")
+# s3 = boto3.client("s3", endpoint_url="http://localhost:9000")
 s3_bucket = os.environ.get("S3_BUCKET")
 # s3_url = f"http://{s3_bucket}.s3.amazonaws.com/"
 

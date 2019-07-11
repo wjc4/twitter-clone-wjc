@@ -35,6 +35,15 @@
     /* Other styles here */
 }
 
+.post-image {
+    max-height: 200px;
+    -webkit-transition: max-height .3s ease;
+}
+
+.post-image-enlarged {
+    max-height: 600px;
+}
+
 /* .hennge-icon {
     line-height: 20px;
     vertical-align: center;

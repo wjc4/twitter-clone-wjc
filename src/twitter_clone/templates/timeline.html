@@ -269,11 +269,15 @@
 
             <div class="topbar-divider d-none d-sm-block"></div>
 
+
+            {% if logged_in %}           
             <!-- Nav Item - User Information -->
             <li class="nav-item dropdown no-arrow">
               <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown"
                 aria-haspopup="true" aria-expanded="false">
-                <span class="mr-2 d-none d-lg-inline text-gray-600 small">Valerie Luna</span>
+                <span class="mr-2 d-none d-lg-inline text-gray-600 small">
+                    {{ logged_in.display_name }}
+                </span>
                 <img class="img-profile rounded-circle" src="https://source.unsplash.com/QAB-WJcbgJk/60x60">
               </a>
               <!-- Dropdown - User Information -->
@@ -297,6 +301,18 @@
                 </a>
               </div>
             </li>
+            {% else %}
+            <li class="nav-item">
+              <a class="nav-link " href="{{url_for('login')}}">
+                <span class="mr-2 d-none d-lg-inline text-gray-600 small">
+                    Login
+                </span>
+                
+              </a>
+            </li>
+            {% endif %}
+
+
 
           </ul>
 
@@ -449,7 +465,7 @@
                   {{ post.text }}
                   {% if post.image_url %}
                   <br>
-                  <img class="mt-2" id="uploadPreview" style="width: auto; max-height: 200px;"
+                  <img class="mt-2 post-image" id="uploadPreview"
                     src="{{ post.image_url }}" />
                   {% else %}
                   {% endif %}
@@ -466,6 +482,7 @@
             {% endfor %}
 
             <script type="text/javascript">
+              
               var epoch_time = document.querySelectorAll(".epoch");
               for (var i = 0; i < epoch_time.length; i++) {
                 var d = new Date(0)
@@ -535,6 +552,11 @@
       <!-- Page level custom scripts -->
       <script src="static/js/demo/chart-area-demo.js"></script>
       <script src="static/js/demo/chart-pie-demo.js"></script>
+      <script>
+          $('.post-image').click(function() {
+            $(this).toggleClass('post-image-enlarged');
+          });
+      </script>
 
 </body>
 

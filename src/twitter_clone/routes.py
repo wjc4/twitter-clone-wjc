@@ -206,7 +206,7 @@ def profile():
         "timeline.html",
         timeline=timeline,
         page_title="Your Tweets",
-        logged_in=True,
+        logged_in=user,
         user=user,
     )
     # return render_template("profile.html", timeline=timeline)
@@ -214,12 +214,13 @@ def profile():
 
 @app.route("/global", methods=["GET"])
 def global_timeline():
-    logged_in = False
+    user = False
     username = None
     if is_logged_in():
         logged_in = True
         user_id = db.get_session(session["session_id"])
         username = db.get_username(user_id)
+        user = db.get_user(user_id)
 
     # user_id = db.get_session(session["session_id"])
     # username = db.get_username(user_id)
@@ -229,10 +230,7 @@ def global_timeline():
     timeline = update_timeline(timeline, username)
     app.logger.debug(timeline)
     return render_template(
-        "timeline.html",
-        timeline=timeline,
-        page_title="Global Tweets",
-        logged_in=logged_in,
+        "timeline.html", timeline=timeline, page_title="Global Tweets", logged_in=user
     )
 
 
@@ -244,13 +242,14 @@ def home_timeline():
 
     user_id = db.get_session(session["session_id"])
     username = db.get_username(user_id)
+    user = db.get_user(user_id)
 
     timeline = db.get_home_timeline(username)
 
     timeline = update_timeline(timeline, username)
     app.logger.debug(timeline)
     return render_template(
-        "timeline.html", timeline=timeline, page_title="Your Timeline", logged_in=True
+        "timeline.html", timeline=timeline, page_title="Your Timeline", logged_in=user
     )
 
 
@@ -412,10 +411,12 @@ def upload_file(image):
 @app.route("/users")
 def get_userbase():
     logged_in = False
+    user = False
     if is_logged_in():
         session_id = session["session_id"]
         if db.existing_session(session_id):
             logged_in = True
+
     user_ids = db.get_all_user_id()
     users = db.get_all_user_details(user_ids)
 
@@ -423,6 +424,7 @@ def get_userbase():
         user_id = db.get_session(session["session_id"])
         username = db.get_username(user_id)
         following = db.get_followings(username)
+        current_user = db.get_user(user_id)
         for user in users:
             if user["user_id"] in following:
                 user["following"] = True
@@ -430,7 +432,7 @@ def get_userbase():
                 user["following"] = False
         return render_template(
             "users.html",
-            logged_in=logged_in,
+            logged_in=current_user,
             users=users,
             page_title="All Users",
             current_user=username,
@@ -443,6 +445,10 @@ def get_userbase():
 
 @app.route("/user/<username>", methods=["GET"])
 def get_user_profile(username):
+    logged_in = False  # or same user
+    user = False
+    current_user = False
+
     timeline = db.get_user_timeline(username)
     timeline = update_timeline(timeline)
     user_id = db.get_user_id(username)
@@ -450,7 +456,6 @@ def get_user_profile(username):
     user["followers"] = db.get_followers_num(username)
     user["followings"] = db.get_followings_num(username)
 
-    logged_in = False  # or same user
     following = False
     if is_logged_in():
         session_id = session["session_id"]
@@ -458,13 +463,15 @@ def get_user_profile(username):
             logged_in = True
             user_id = db.get_session(session["session_id"])
             current_username = db.get_username(user_id)
+            current_user = db.get_user(user_id)
             following = db.existing_following(current_username, username)
+
             if current_username == username:
                 logged_in = False
 
     return render_template(
         "user.html",
-        logged_in=logged_in,
+        logged_in=current_user,
         timeline=timeline,
         page_title=username + "'s Tweets",
         following=following,
@@ -486,6 +493,7 @@ def get_user_follower(username):
     if logged_in:
         current_user_id = db.get_session(session["session_id"])
         current_username = db.get_username(current_user_id)
+        current_user = db.get_user(current_user_id)
         following = db.get_followings(current_username)
         for user in users:
             if user["user_id"] in following:
@@ -494,7 +502,7 @@ def get_user_follower(username):
                 user["following"] = False
         return render_template(
             "list_users.html",
-            logged_in=logged_in,
+            logged_in=current_user,
             users=users,
             page_title="@" + username + "'s Followers",
             current_user=username,
@@ -522,6 +530,7 @@ def get_user_following(username):
     if logged_in:
         current_user_id = db.get_session(session["session_id"])
         current_username = db.get_username(current_user_id)
+        current_user = db.get_user(current_user_id)
         following = db.get_followings(current_username)
         for user in users:
             if user["user_id"] in following:
@@ -530,7 +539,7 @@ def get_user_following(username):
                 user["following"] = False
         return render_template(
             "list_users.html",
-            logged_in=logged_in,
+            logged_in=current_user,
             users=users,
             page_title="@" + username + "'s Followings",
             current_user=username,
