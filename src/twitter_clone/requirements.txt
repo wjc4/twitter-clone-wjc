@@ -1,0 +1,7 @@
+Flask
+boto3
+redis
+authlib
+google-api-python-client
+google-auth
+gunicorn

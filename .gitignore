@@ -4,3 +4,8 @@ __pycache__
 .DS_Store
 .envrc
 *.egg-info
+.vscode
+.idea
+*.sh
+*.service
+env

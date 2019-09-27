@@ -11,5 +11,12 @@ setup(
             "twitter-clone = twitter_clone.run:main",
         ]
     },
-    install_requires=["Flask", "boto3"],
+    install_requires=[
+        "Flask",
+        "boto3",
+        "redis",
+        "authlib",
+        "google-api-python-client",
+        "google-auth",
+    ],
 )
